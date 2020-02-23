@@ -29,7 +29,7 @@ public class Orders {
     private Integer quantity;
 
     @Column(name = "total_cost")
-    private Integer totalCost;
+    private Float totalCost;
 
     @Column(name = "order_status")
     private String orderStatus;

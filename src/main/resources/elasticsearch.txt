@@ -83,8 +83,526 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-multi-get.h
 
 
 -------------------------------------------------------
-
 Filter
 
+-------------------------------------------------------
+
+Health of cluster
+GET /_cluster/health
+
+Listing Nodes
+GET /_cat/nodes?v
+
+Listing Indices
+GET /_cat/indices?v
+
+create a new index name pages:
+PUT /pages
+DELETE /pages
+
+//create index with some configs :
+PUT /products
+{
+    "settings":{
+        "number_of_shards":2,
+        "number_of_replicas":2
+    }
+}
+//by default we have 1 shard and 1 replication factor
+
+//adding a document
+POST /products/_doc
+{
+    "name":"ABC",
+    "price":64,
+    "in_stock":10
+}
+
+// if id is not specied in url then it will take a random generated value
+POST /products/_doc/123
+{
+    "name":"ABC",
+    "price":64,
+    "in_stock":10
+}
+
+
+//retrive document :
+GET /products/_doc/100
+
+//update documents :
+POST /products/_update/100
+{
+    "doc":{
+        "in_stock":3,  //this will be updated
+        "tags":["elastic_search"]  //this will be added
+    }
+}
+
+//scripted update:
+POST /products/_update/100
+{
+    "script":{
+        "source":"ctx._source.in_stock--"
+    }
+}
+
+//scripted update:
+POST /products/_update/100
+{
+    "script":{
+        "source":"ctx._source.in_stock = 10"
+    }
+}
+
+//scripted update: with parameter
+POST /products/_update/100
+{
+    "script":{
+        "source":"ctx._source.in_stock -= params.quandity"
+    }
+    "params":{
+        "quandity":4
+    }
+}
+
+//to replace document use the PUT Command with new attributes
+old attritubes will be delited
+
+// query update
+
+POST /products/_update_by_query
+{
+    "script":{
+        "source":"ctx._source.in_stock--"
+    }
+    "query":{
+        "match_all":{ }
+    }
+}
+
+
+//delete by query
+
+POST /products/_delete_by_query
+{
+    "conflicts":"proceed"
+    "query":{
+        "match_all":{}
+    }
+}
+
+
+--------------------MApping ---------------
+
+GET /products/default/_mapping
+
+---------------update mapping for a index ---------
+PUT /product/default/_mapping
+{
+    "properties":{
+        "discount":{
+            "type":"double"
+        }
+    }
+}
+
+
+//change existing mapping
+
+delete index first and add the mapping again
+DELETE /product
+PUT /product
+{
+    "mappings":{
+        "default":{
+            "dynamic":false,
+            "properties":{
+                "in_stock":{
+                    "type":"integer"
+                },
+                "A":{
+                    "type":"integer"
+                }
+            }
+        }
+    }
+}
+
+
+// search queries run against the Inverted Index's which are anylysed by the analyser before
+
+Analyser : stub, synonym
+|    -> Character Filter
+|   -> Tokenizer
+|    -> Token Filter : stub, synonym
+
+----------Analyse API-----------------
+Standard  tokenizer
+
+POST _analyze
+{
+    "tokenizer":"standard",
+    "text":"i m in the class"
+}
+
+POST _analyze
+{
+    "filter":["lowercase"],
+    "text":"i m in the class"
+}
+
+// Character Filter
+    -> HTML Strip Character Filter == html_strip
+    -> Mapping Character Filter == mapping : it replaces values based on a map of keys and value
+    -> Pattern Replace Filter == pattern_replace : it uses a regex pattern to replace values
+
+// Tokenizers
+    -> Word Oriented Tokenizers == full text is splitted in different words
+        -> Letter Tokenizers : letter
+        -> Lowercase Tokenizer : lowercase
+        -> whitespace Tokenizer : split via space
+        -> UAX URL Email Tokenizer : preserve email and url as single token
+    -> Partial Word Tokenizers
+        -> N-Gram Tokenizer = ngram :  it make different anagrams of word
+        -> Edge N-Gram Tokenizer = edge_ngram : make anagrams from the starting of words only
+    -> Strcutured Text Tokenizers : ussed for email address
+        -> Keyword
+        -> Pattern Tokenizer :
+        -> Path Tokenizer :
+
+// Token filter
+    -> Standard
+    -> Lowercase
+    -> uppercase
+    -> ngram
+    -> stop
+    -> a lot more
+
+---------------Analyzers------------
+-> Standard Analyzer
+-> Simple Analyzer
+-> Stop Analyzer
+-> Language Analyzer
+-> Keyword Analyzer
+-> Pattern Analyzer
+-> Whitespace Analyzer
+
+
+-----------configure analyzer------------
+PUT /existing_analyzer_config
+{
+    "settings":{
+        "analysis":{
+            "analyzer":{
+                "english_stop":{
+                    "type":"standard",
+                    "stopwords":"_english_"
+                }
+            },
+            "filter":{
+                "my_stemmer":{
+                    "type":"stemmer",
+                    "name":"english"
+                }
+            }
+        }
+    }
+}
+
+// using the above analyzer
+POST /existing_analzer_config/_analyze
+{
+    "analyzer":"english_stop",
+    "text":"text is here"
+}
+
+-----------------------Searching data from Elastic Search----------------
+
+GET /product/default/_search
+{
+    "query":{
+        "match":{
+            "description":{
+                "value":"text to be search"
+            }
+        }
+    }
+}
+
+GET /product/default/_search
+{
+    "query":{
+        "match":{
+            "description":"text search to be"
+        }
+    }
+}
+
+// it will match everthing
+GET /product/default/_search?q=*
+
+GET /product/default/_search?q=name_of_field:Lobster
+
+GET /product/default/_search?q=tags:Meat AND name:Tuna
+GET /product/default/_search?q=tags:Meat OR name:Tuna
+
+Match Score Algorithm
+old : Okapi BM25
+new : BM25
+
+// term query search
+
+GET /product/default/_search
+{
+    "query":{
+        "term":{
+            "category":"Shoes"
+        }
+    }
+}
+
+
+// query for particular range
+GET /product/default/_search
+{
+    "query":{
+        "term":{
+            "price":{
+                "gte":200,
+                "lte":2000
+            }
+        }
+    }
+}
+ DGT and LCD : greater than and equal to , less than and equal to
+ if we are doing for the date then we need to provide the format as well;
+
+ // matching based on prefix :
+
+ GET /product/default/_search
+ {
+     "query":{
+         "prefix":{
+             "tags.keyword":"vege"
+         }
+     }
+ }
+
+ //dynamic term query
+ GET /product/default/_search
+  {
+      "query":{
+          "prefix":{
+              "tags.keyword":"veg*ble"
+          }
+      }
+  }
+
+* == wild card character
+? == only for one character
+
+// searching with Regex on term queries
+ GET /product/default/_search
+  {
+      "query":{
+          "regex":{
+              "tags.keyword":"veget[a-zA-Z]+ble"
+          }
+      }
+  }
+
+
+----------------------Full Text Search Queries--------------------
+#Finally
+
+GET /recipe/default/_search
+{
+    "query":{
+        "match":{
+            "title":"Recipes with pasta and spaghetti"
+        }
+    }
+}
+
+GET /recipe/default/_search
+{
+    "query":{
+        "match":{
+            "title":{
+                "query":"Recipes with pasta and spaghetti",
+                "operator":"and"
+            }
+        }
+    }
+}
+#it means all terms should be there in the results
+
+//search for exact phrase
+GET /recipe/default/_search
+{
+    "query":{
+        "match_phrase":{
+            "title":"A and B"
+        }
+    }
+}
+# mush be in the same order
+
+
+// multi match :::: Required
+GET /recipe/default/_search
+{
+    "query":{
+        "multi_match":{
+            "query":"pasta",
+            "fields":[ "title", "description" ]
+        }
+    }
+}
+
+
+//Compound Query
+GET /recipe/default/_search
+{
+    "query":{
+        "bool":{
+            "must":[
+                {
+                    "match":{
+                        "ingredients.name":"parmessan"
+                    }
+                }
+            ],
+            "filter":[
+                {
+                    "range":{
+                        "preparation.time":{
+                            "lte":15
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}
+
+// Compound Queries
+
+GET /recipe/default/_search
+{
+    "query": {
+        "bool": {
+
+        }
+    }
+}
+
+
+
+//search query Ecomm-App
+
+
+POST products/_search
+{
+  "query": {
+    "bool": {
+      "should": [
+        {"match": {
+          "product_name":{
+            "query": "jeans",
+            "fuzziness": "AUTO"
+          }
+        }},
+        {"match": {
+          "product_description": {
+            "query": "%s",
+            "fuzziness": "AUTO"
+          }
+        }},
+        {"match": {
+          "category": {
+            "query": "%s",
+            "fuzziness": "AUTO"
+          }
+        }}
+      ]
+      , "filter": {
+        "range": {
+          "price": {
+            "gte": 123,
+            "lte": 1000
+          }
+        }
+
+      },
+      "must": [
+        {"match": {
+          "category": {
+            "query":"Bottoms",
+            "fuzziness": "AUTO"
+
+          }
+        }}
+      ]
+      , "minimum_should_match": 1
+    }
+  }
+}
+
+
+// formatted
+
+{
+    "query":{
+        "bool":{
+            "should":[
+                {
+                    "match":{
+                        "product_name":{
+                            "query":"jeans",
+                            "fuzziness":"AUTO"
+                        }
+                    }
+                },
+                {
+                    "match":{
+                        "product_description":{
+                            "query":"%s",
+                            "fuzziness":"AUTO"
+                        }
+                    }
+                },
+                {
+                    "match":{
+                        "category":{
+                            "query":"%s",
+                            "fuzziness":"AUTO"
+                        }
+                    }
+                }
+            ],
+            "filter":{
+                "range":{
+                    "price":{
+                        "gte":123,
+                        "lte":1000
+                    }
+                }
+            },
+            "must":[
+                {
+                    "match":{
+                        "category":{
+                            "query":"Bottoms",
+                            "fuzziness":"AUTO"
+                        }
+                    }
+                }
+            ],
+            "minimum_should_match":1
+        }
+    }
+}
 
 

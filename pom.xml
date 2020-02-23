@@ -14,11 +14,33 @@
 	<name>ecommApp</name>
 	<description>Demo Project to get hands on with Kafka</description>
 
+	<repositories>
+		<repository>
+			<id>maven-central</id>
+			<url>https://repo1.maven.org/maven2</url>
+		</repository>
+	</repositories>
+
 	<properties>
 		<java.version>1.8</java.version>
 	</properties>
 
 	<dependencies>
+
+		<!-- https://mvnrepository.com/artifact/com.opencsv/opencsv -->
+<!--		<dependency>-->
+<!--			<groupId>com.opencsv</groupId>-->
+<!--			<artifactId>opencsv</artifactId>-->
+<!--			<version>4.0</version>-->
+<!--		</dependency>-->
+
+
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-csv</artifactId>
+			<version>1.5</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -26,6 +48,10 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webflux</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -96,6 +122,52 @@
 			<artifactId>sendgrid-java</artifactId>
 			<version>4.4.1</version>
 		</dependency>
+
+<!--		<dependency>-->
+<!--			<groupId>org.springframework.boot</groupId>-->
+<!--			<artifactId>spring-boot-starter-actuator</artifactId>-->
+<!--		</dependency>-->
+
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.vaadin.external.google</groupId>
+			<artifactId>android-json</artifactId>
+			<version>0.0.20131108.vaadin1</version>
+			<scope>compile</scope>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.elasticsearch/elasticsearch -->
+		<dependency>
+			<groupId>org.elasticsearch</groupId>
+			<artifactId>elasticsearch</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
+			<version>2.8.6</version>
+		</dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-streams</artifactId>
+        </dependency>
+
+		<dependency>
+			<groupId>com.itextpdf</groupId>
+			<artifactId>itextpdf</artifactId>
+			<version>5.5.10</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/pl.allegro.finance/tradukisto -->
+		<dependency>
+			<groupId>pl.allegro.finance</groupId>
+			<artifactId>tradukisto</artifactId>
+			<version>1.0.0</version>
+		</dependency>
+
 
 	</dependencies>
 

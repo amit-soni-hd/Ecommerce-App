@@ -12,15 +12,11 @@ import com.ecommerce.ecommApp.customers.models.Customer;
 import com.ecommerce.ecommApp.customers.repository.CustomerRepository;
 import com.ecommerce.ecommApp.commons.enums.NotificationType;
 import com.ecommerce.ecommApp.customers.utils.CustomerUtil;
-import com.ecommerce.ecommApp.notifications.NotificationUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javassist.NotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.NoSuchElementException;
@@ -31,78 +27,76 @@ public class CustomerService {
 
     @Autowired
     private CustomerRepository customerRepository;
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
     NotificationProducer notificationProducer;
     CustomerUtil customerUtil = new CustomerUtil();
 
+    public CustomerDto register(RegistrationDto regDetails) throws EmailExistsException {
 
-    public void register(RegistrationDto registrationDetails) throws EmailExistsException {
-
-        if (emailExists(registrationDetails.getEmail())) {
+        if (emailExists(regDetails.getEmail())) {
             throw new EmailExistsException(
-                    "There is an account with that email address: "
-                            + registrationDetails.getEmail());
+                    CommonsUtil.EMAIL_EXISTS + regDetails.getEmail());
         }
         Customer customer = new Customer();
-        customer.setName(registrationDetails.getName());
-        customer.setEmail(registrationDetails.getEmail());
-        customer.setNumber(registrationDetails.getNumber());
+        customer.setName(regDetails.getName());
+        customer.setEmail(regDetails.getEmail());
+        customer.setNumber(regDetails.getNumber());
         customer.setPassword(EcommAppApplication.context.getBean(BCryptPasswordEncoder.class).
-                encode(registrationDetails.getPassword()));
-        customer.setWhatsapp(registrationDetails.getWhatsapp());
-        customer.setGender(registrationDetails.getGender());
+                encode(regDetails.getPassword()));
+        customer.setWhatsapp(regDetails.getWhatsapp());
+        customer.setGender(regDetails.getGender());
         customerRepository.save(customer);
         CustomerDto customerDto = customerUtil.convertToPojo(customer);
         sendRegistrationNotification(customerDto);
+        return customerDto;
     }
 
     public CustomerDto loginCustomer(LoginDto loginDetails) throws NotFoundException {
 
         Optional<Customer> loggedInCustomer = customerRepository.findByEmail(loginDetails.getEmail());
-        if (loggedInCustomer.isPresent() && passwordEncoder().matches(loginDetails.getPassword(),
-                loggedInCustomer.get().getPassword())) {
-            CustomerDto customerDetails = customerUtil.convertToPojo(loggedInCustomer.get());
-            return customerDetails;
+        if (loggedInCustomer.isPresent() && EcommAppApplication.context.getBean(BCryptPasswordEncoder.class)
+                .matches(loginDetails.getPassword(), loggedInCustomer.get().getPassword())) {
+            return customerUtil.convertToPojo(loggedInCustomer.get());
         } else {
-            throw new NotFoundException("Customer Does not Exist");
+            throw new NotFoundException(CommonsUtil.CUSTOMER_NOT_FOUND);
         }
     }
 
     public CustomerDto getCustomerDetails(Long customerId) throws NotFoundException {
         Optional<Customer> loggedInCustomer = customerRepository.findById(customerId);
-        if(loggedInCustomer.isPresent()){
-            CustomerDto customerDetails = customerUtil.convertToPojo(loggedInCustomer.get());
-            return customerDetails;
-        } else{
-            throw new NotFoundException("Wrong Customer Id");
+        if (loggedInCustomer.isPresent()) {
+            return customerUtil.convertToPojo(loggedInCustomer.get());
+        } else {
+            throw new NotFoundException(CommonsUtil.WRONG_CUSTOMER_ID);
         }
     }
 
     public CustomerDto updateCustomerDetails(CustomerDto customerDetails) {
-        Customer customer = customerRepository.findById(customerDetails.getId()).get();
-        if(null!=customer){
+        Optional<Customer> registeredCustomer = customerRepository.findById(customerDetails.getId());
+        if (registeredCustomer.isPresent()) {
 
-            customer.setEmail(customerDetails.getEmail());
-            customer.setName(customerDetails.getName());
-            customer.setGender(customerDetails.getGender());
-            customer.setNumber(customerDetails.getNumber());
-            customer.setWhatsapp(customerDetails.getWhatsapp());
+            Customer customer = registeredCustomer.get();
+            if (customerUtil.isStringFieldValid(customerDetails.getEmail()))
+                customer.setEmail(customerDetails.getEmail());
+            if (customerUtil.isStringFieldValid(customerDetails.getName()))
+                customer.setName(customerDetails.getName());
+            if (customerUtil.isStringFieldValid(customerDetails.getGender()))
+                customer.setGender(customerDetails.getGender());
+            if (customerUtil.isPhoneNumberValid(customerDetails.getNumber().toString()))
+                customer.setNumber(customerDetails.getNumber());
+            if (customerUtil.isPhoneNumberValid(customerDetails.getWhatsapp().toString()))
+                customer.setWhatsapp(customerDetails.getWhatsapp());
+
             customerRepository.save(customer);
             return customerUtil.convertToPojo(customer);
-        } else{
-            throw new NoSuchElementException("Customer Not Found");
+        } else {
+            throw new NoSuchElementException(CommonsUtil.CUSTOMER_NOT_FOUND);
         }
     }
 
     private void sendRegistrationNotification(CustomerDto customerDto) {
         ObjectMapper objectMapper = new ObjectMapper();
         UserRegistered userRegistered = new UserRegistered();
-        userRegistered.setMode(new ArrayList<String>());
+        userRegistered.setMode(new ArrayList<>());
         userRegistered.getMode().add(NotificationType.Text_SMS.toString());
         userRegistered.getMode().add(NotificationType.EMAIL.toString());
         userRegistered.setCustomerDto(customerDto);
@@ -110,18 +104,13 @@ public class CustomerService {
         try {
             notificationProducer.producerNotification(objectMapper.writeValueAsString(userRegistered),
                     EcommAppApplication.environment.getRequiredProperty(CommonsUtil.NOTIFICATION_REGISTERED_TOPIC));
-        } catch (IOException ex) {
-
+        } catch (IOException ignored) {
         }
     }
 
     private boolean emailExists(String email) {
-
         Optional<Customer> customer = customerRepository.findByEmail(email);
-        if (customer.isPresent()) {
-            return true;
-        }
-        return false;
+        return customer.isPresent();
     }
 
 }

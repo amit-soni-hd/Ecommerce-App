@@ -10,11 +10,15 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.Properties;
 
+/**
+ * This Thread will work as a Consumer for Topic User_Registered.
+ * This will continously poll the data from the topic and process each record and send that
+ * Processed Object to the notification handler.
+ */
 public class UserRegisteredService extends Thread {
 
     private static final Logger log = LoggerFactory.getLogger(UserRegisteredService.class);
@@ -31,6 +35,9 @@ public class UserRegisteredService extends Thread {
         this.kafkaTopicName = kafkaTopicName;
     }
 
+    /**
+     * This Run method will work as a poll. This method will continously poll records from the Kafka topic
+     */
     @Override
     public void run() {
         super.run();
@@ -48,18 +55,22 @@ public class UserRegisteredService extends Thread {
                         final String json = record.value();
                         try {
                             UserRegistered userRegistered = objectMapper.readValue(json, UserRegistered.class);
-                            System.out.println("record found : " + userRegistered.toString());
+                            log.trace("Record Found : {}", userRegistered.toString());
                             String message = formatMessage(userRegistered);
                             notificationHandler.sendNotification(getName(), userRegistered.getMode(), userRegistered, message);
                         } catch (IOException ex) {
-                            log.error("error in processing json record in : " + getName());
+                            log.error("error in processing record in : {} : {}" + getName(),record);
                         }
                     }
             );
         }
     }
 
+    /**
+     * @return : This Method will format the text Message which we will be sending to the User via different modes.
+     */
     private String formatMessage(UserRegistered userRegistered) {
+        log.trace("Formatting message for {}", userRegistered.toString());
         CustomerDto customerDto = userRegistered.getCustomerDto();
         return String.format(NotificationUtil.MessageTemplate.USER_REGISTERED_MESSAGE, customerDto.getId());
     }

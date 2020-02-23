@@ -7,6 +7,7 @@ public class CommonsUtil {
 
     private static final ObjectMapper objectMapper;
     private static final NotificationProducer notificationProducer;
+    public static final String SERVER_PORT="server.port";
     public static final String NOTIFICATION_USER_REGISTERED_SERVICE = "User Registered";
     public static final String NOTIFICATION_ORDER_PLACED_SERVICE = "Order Placed";
     public static final String NOTIFICATION_ORDER_STATUS_SERVICE = "Order Status";
@@ -21,7 +22,11 @@ public class CommonsUtil {
     public static final String NOTIFICATION_ORDER_STATUS_TOPIC = "notification.order.status.topic";
     public static final String NOTIFICATION_ORDER_CANCEL_TOPIC = "notification.order.cancel.topic";
 
+    public static final String VIEW_PRODUCT_TOPIC = "view.product.topic";
 
+    public static final String EMAIL_EXISTS = "There is an account with this email address:";
+    public static final String CUSTOMER_NOT_FOUND = "Customer Not Found";
+    public static final String WRONG_CUSTOMER_ID = "Wrong Customer Id";
 
     static {
         notificationProducer = new NotificationProducer();

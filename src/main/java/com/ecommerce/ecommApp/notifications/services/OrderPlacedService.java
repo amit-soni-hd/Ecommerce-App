@@ -7,12 +7,20 @@ import com.ecommerce.ecommApp.notifications.handlers.NotificationHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Properties;
 
+/**
+ * This Thread will work as a Consumer for Topic Order_Placed.
+ * This will continously poll the data from the topic and process each record and send that
+ * Processed Object to the notification handler.
+ */
 public class OrderPlacedService extends Thread {
 
+    private static final Logger log = LoggerFactory.getLogger(OrderPlacedService.class);
     String kafkaTopicName;
     Properties props;
     KafkaConsumer kafkaConsumer;
@@ -24,6 +32,9 @@ public class OrderPlacedService extends Thread {
         this.kafkaTopicName = kafkaTopicName;
     }
 
+    /**
+     * This Run method will work as a poll. This method will continously poll records from the Kafka topic
+     */
     @Override
     public void run() {
         super.run();
@@ -40,16 +51,19 @@ public class OrderPlacedService extends Thread {
                 final String json = record.value();
                 try {
                     OrderPlaced orderPlaced = objectMapper.readValue(json, OrderPlaced.class);
-                    System.out.println("record found : " + orderPlaced.toString());
+                    log.trace("Record Found : {}", orderPlaced.toString());
                     String message = formatMessage(orderPlaced);
                     notificationHandler.sendNotification(getName(), orderPlaced.getMode(), orderPlaced, message);
                 } catch (IOException ex) {
-
+                    log.error("Error in processing Record : {}", record);
                 }
             });
         }
     }
 
+    /**
+     * @return : This Method will format the text Message which we will be sending to the User via different modes.
+     */
     private String formatMessage(OrderPlaced orderPlaced) {
         return String.format(NotificationUtil.MessageTemplate.ORDER_PLACED_MESSAGE, orderPlaced.getQuandity(), orderPlaced.getProductName(), orderPlaced.getOrderID());
     }

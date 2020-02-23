@@ -22,7 +22,7 @@ public class OrderPlaced
     private Integer quandity;
 
     @JsonProperty("total_cost")
-    private Integer totalCost;
+    private Float totalCost;
 
     @JsonProperty("customerDto")
     private CustomerDto customerDto;

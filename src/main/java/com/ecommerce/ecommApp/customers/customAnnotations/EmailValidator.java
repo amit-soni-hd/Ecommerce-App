@@ -5,6 +5,9 @@ import javax.validation.ConstraintValidatorContext;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Email Validator class used by @{@link ValidEmail} custom annotation to check if email is valid or not
+ */
 public class EmailValidator
         implements ConstraintValidator<ValidEmail, String> {
 

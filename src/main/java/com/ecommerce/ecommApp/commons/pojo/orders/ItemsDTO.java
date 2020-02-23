@@ -13,5 +13,5 @@ public class ItemsDTO {
     private int quantity;
 
     @JsonProperty("total_cost")
-    private int cost;
+    private float cost;
 }

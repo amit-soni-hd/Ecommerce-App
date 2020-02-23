@@ -13,6 +13,12 @@ import java.util.List;
 @Transactional
 @Repository
 public interface OrderRepository extends JpaRepository<Orders, String> {
+    /**
+     * Custom query to get all the orders of a particular customer
+     *
+     * @param customerID
+     * @return List of orders
+     */
     @Query(value = "Select * from orders where customer_id=:customerID", nativeQuery = true)
     List<Orders> getOrdersByCustomerId(@Param("customerID") Long customerID);
 }

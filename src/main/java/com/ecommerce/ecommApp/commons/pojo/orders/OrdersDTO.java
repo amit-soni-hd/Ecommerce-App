@@ -18,12 +18,12 @@ public class OrdersDTO {
     @JsonProperty("product_id")
     private long productID;
 
-    @JsonProperty("quandity")
+    @JsonProperty("quantity")
     private int quantity;
 
     @JsonProperty("total_cost")
-    private int cost;
+    private float cost;
 
-    @JsonProperty("status")
+    @JsonProperty("order_status")
     private String status;
 }

@@ -1,48 +1,27 @@
 package com.ecommerce.ecommApp.commons.pojo.products;
 
+import com.ecommerce.ecommApp.products.composite.CartIdentity;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
-import javax.persistence.*;
-import javax.validation.constraints.NotNull;
-import java.util.HashSet;
-import java.util.Set;
+import javax.persistence.Column;
+import javax.persistence.EmbeddedId;
+import javax.persistence.Entity;
+import javax.persistence.Table;
 
 @Entity
-@Table
+@Table(name = "cart")
 @Data
-@NoArgsConstructor
 public class Cart {
 
-  @Id
-  @Column(name = "cart_id")
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long cart_id;
+    @EmbeddedId
+    private CartIdentity cartIdentity;
 
-  @JsonProperty
-  @NotNull
-  private long customer_id;
+    @JsonProperty("quantity")
+    @Column(name = "quantity")
+    private int quantity;
 
-  @JsonProperty @NotNull
-  private long product_id;
-
-  @JsonProperty @NotNull
-  @Column(name = "quantity")
-  private int quantity;
-
-  @JsonProperty
-  @Column(name = "Availability")
-  Boolean availability;
-
-
-  @ManyToMany(fetch = FetchType.EAGER,
-        cascade = {
-                CascadeType.PERSIST,
-                CascadeType.MERGE
-        },
-          mappedBy = "cart")
-
-  private Set<Product> product = new HashSet<>();
+    @JsonProperty("total_cost")
+    private float cost;
 
 }

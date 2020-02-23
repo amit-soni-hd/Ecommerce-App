@@ -1,5 +1,6 @@
 package com.ecommerce.ecommApp.customers.controllers;
 
+import com.ecommerce.ecommApp.commons.pojo.ResponseMessage;
 import com.ecommerce.ecommApp.commons.pojo.customer.CustomerDto;
 import com.ecommerce.ecommApp.customers.dto.LoginDto;
 import com.ecommerce.ecommApp.customers.dto.RegistrationDto;
@@ -19,56 +20,81 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.validation.Valid;
 import java.util.NoSuchElementException;
 
+/**
+ * Customer Controller to manage requests for customer module.
+ */
 @RestController
 public class CustomerController {
 
     @Autowired
     CustomerService customerService;
 
+    /**
+     * Post method to register a customer
+     * @param registrationDetails - Data entered by customer to register
+     * @return customerDetails - registered customer's details
+     * EmailExistsException - when already used email used for registration.
+     */
     @PostMapping("/register")
-    ResponseEntity<String> registerUser(@RequestBody @Valid RegistrationDto registrationDetails){
+    ResponseEntity<Object> registerUser(@RequestBody @Valid RegistrationDto registrationDetails){
 
         try {
-            customerService.register(registrationDetails);
-            return new ResponseEntity("User Registered Successfully.", HttpStatus.OK);
+            CustomerDto customerDetails =  customerService.register(registrationDetails);
+            return new ResponseEntity<>(customerDetails, HttpStatus.OK);
         }
         catch (EmailExistsException exception){
-            return new ResponseEntity("Registration unsuccessful. "+exception.getMessage(), HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(new ResponseMessage("Registration unsuccessful. ","error"),
+                    HttpStatus.BAD_REQUEST);
         }
     }
 
+    /**
+     * Post request to login a customer
+     * @param loginDetails - login credentials of customer
+     * @return - {@link ResponseEntity}
+     */
     @PostMapping("/login")
-    ResponseEntity<?> login(@RequestBody @Valid LoginDto loginDetails){
+    ResponseEntity<Object> login(@RequestBody @Valid LoginDto loginDetails){
 
         try{
             CustomerDto customerDetails = customerService.loginCustomer(loginDetails);
             return new ResponseEntity<>(customerDetails,HttpStatus.OK);
         }
         catch (NotFoundException exception){
-            return new ResponseEntity<Object>("Login Unsuccessful. "+exception.getMessage(), HttpStatus.FORBIDDEN);
+            return new ResponseEntity<>(new ResponseMessage("Login Unsuccessful. ","error"),
+                    HttpStatus.FORBIDDEN);
         }
     }
 
+    /**
+     * get request for obtaining customer details by its id.
+     * @param customerId - registered customer's id.
+     * @return - {@link ResponseEntity}
+     */
     @GetMapping("/customer/{customerId}")
-    ResponseEntity<?> getCustomerDetails(@PathVariable long customerId){
-
+    ResponseEntity<Object> getCustomerDetails(@PathVariable long customerId){
         try{
             CustomerDto customerDetails = customerService.getCustomerDetails(customerId);
             return new ResponseEntity<>(customerDetails,HttpStatus.OK);
 
         } catch (NotFoundException exception) {
-            return new ResponseEntity<Object>("User Not Found with ID. "+exception.getMessage(), HttpStatus.FORBIDDEN);
+            return new ResponseEntity<>(new ResponseMessage("User Id not found. ","error"),
+                    HttpStatus.FORBIDDEN);
         }
     }
 
+    /**
+     * Put request to update a customer's details
+     * @param customerDetails - details to be updated
+     * @return - {@link ResponseEntity}
+     */
     @PutMapping("/customer")
-    ResponseEntity<?> updateCustomerDetails(@RequestBody @Valid CustomerDto customerDetails){
-
+    ResponseEntity<Object> updateCustomerDetails(@RequestBody @Valid CustomerDto customerDetails){
         try{
             CustomerDto updatedCustomerDetails = customerService.updateCustomerDetails(customerDetails);
             return new ResponseEntity<>(updatedCustomerDetails,HttpStatus.OK);
         } catch(NoSuchElementException exception){
-            return new ResponseEntity<Object>("Update Unsuccessful. "+exception.getMessage(),
+            return new ResponseEntity<>(new ResponseMessage("Update Unsuccessful. "+exception.getMessage(),"error"),
                     HttpStatus.FORBIDDEN);
         }
     }

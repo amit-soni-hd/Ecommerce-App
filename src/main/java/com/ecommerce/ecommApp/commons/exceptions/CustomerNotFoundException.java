@@ -1,6 +1,7 @@
 package com.ecommerce.ecommApp.commons.exceptions;
 
-public class CustomerNotFoundException extends Exception
-{
-
+public class CustomerNotFoundException extends Exception {
+  public CustomerNotFoundException(String message) {
+    super(message);
+  }
 }

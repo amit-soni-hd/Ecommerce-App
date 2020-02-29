@@ -3,7 +3,6 @@ package com.ecommerce.ecommApp.customers.utils;
 import com.ecommerce.ecommApp.commons.pojo.ResponseMessage;
 import com.ecommerce.ecommApp.commons.pojo.customer.CustomerDto;
 import com.ecommerce.ecommApp.customers.models.Customer;
-
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -14,7 +13,7 @@ public class CustomerUtil {
         customerDto.setName(customer.getName());
         customerDto.setEmail(customer.getEmail());
         customerDto.setGender(customer.getGender());
-        customerDto.setId(customer.getId());
+        customerDto.setId(customer.getCustomerId());
         customerDto.setNumber(customer.getNumber());
         customerDto.setWhatsapp(customer.getWhatsapp());
         return customerDto;

@@ -1,37 +1,60 @@
 package com.ecommerce.ecommApp.orders.services;
 
-import com.ecommerce.ecommApp.EcommAppApplication;
-import com.ecommerce.ecommApp.commons.NotificationProducer;
+import com.ecommerce.ecommApp.commons.kafka.Producer;
 import com.ecommerce.ecommApp.commons.Util.CommonsUtil;
 import com.ecommerce.ecommApp.commons.Util.Communication;
 import com.ecommerce.ecommApp.commons.enums.NotificationType;
 import com.ecommerce.ecommApp.commons.enums.OrderStatus;
 import com.ecommerce.ecommApp.commons.pojo.customer.CustomerDto;
-import com.ecommerce.ecommApp.commons.pojo.notification.OrderPlaced;
+import com.ecommerce.ecommApp.commons.pojo.notification.OrderDetails;
 import com.ecommerce.ecommApp.commons.pojo.orders.ItemsDTO;
 import com.ecommerce.ecommApp.commons.pojo.orders.OrdersDTO;
+import com.ecommerce.ecommApp.commons.pojo.products.Cart;
 import com.ecommerce.ecommApp.commons.pojo.products.Product;
+import com.ecommerce.ecommApp.commons.security.JwtTokenProvider;
 import com.ecommerce.ecommApp.orders.Models.Orders;
 import com.ecommerce.ecommApp.orders.repository.OrderRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.ecommerce.ecommApp.products.services.ProductService;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javassist.NotFoundException;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
+import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
+import java.util.Properties;
 
+@Slf4j
 @Service
 public class OrderServices {
     @Autowired
     private OrderRepository orderRepository;
 
+    @Autowired
+    private ProductService productService;
+
+    @Autowired
+    private Environment environment;
+
+    @Autowired
+    private Producer producer;
+
+    @Autowired
+    private HttpServletRequest httpServletRequest;
+
+    @Autowired
+    JwtTokenProvider jwtTokenProvider;
+
     /**
      * Get all orders for the given customer id
      *
-     * @param customerID
+     * @param customerID ID of the cutsomer whose order history is needed
      * @return list of order of the customer
      * @throws NotFoundException If no order exist for that particular customer
      */
@@ -46,15 +69,32 @@ public class OrderServices {
      * Function to add order to the orders database
      *
      * @param customerID      ID of the customer placing the order
-     * @param productsOrdered Th elist of Items that are ordered by the customer
      * @throws Exception
      */
-    public void placeOrder(Long customerID, List<ItemsDTO> productsOrdered) throws Exception {
+    public void placeOrder(Long customerID) throws Exception {
+
+        List<Cart>  cart = fetchCartOfCustomer(customerID);
+        List<ItemsDTO> productsOrdered = convertToItemsDto(cart);
         for (ItemsDTO item : productsOrdered) {
             Orders order = getOrderInstance(customerID, item);
             orderRepository.save(order);
             notifyUser(Arrays.asList(NotificationType.Text_SMS.toString(), NotificationType.EMAIL.toString()), order);
         }
+        productService.deductProducts(productsOrdered);
+    }
+
+    private List<ItemsDTO> convertToItemsDto(List<Cart> cartProducts){
+
+        List<ItemsDTO> items = new ArrayList<>();
+        for(Cart cartProduct: cartProducts){
+
+            ItemsDTO cartItem = new ItemsDTO();
+            cartItem.setCost(cartProduct.getCost());
+            cartItem.setProductID(cartProduct.getCartIdentity().getProductId());
+            cartItem.setQuantity(cartProduct.getQuantity());
+            items.add(cartItem);
+        }
+        return items;
     }
 
     /**
@@ -74,6 +114,16 @@ public class OrderServices {
         return orders;
     }
 
+    private List<Cart> fetchCartOfCustomer(Long customerId) throws Exception {
+
+        String token = httpServletRequest.getHeader("Authorization");
+        String data = Communication.sendGetRequest("http://" + Communication.getApplicationAddress() + "/carts/" + customerId,token);
+        ObjectMapper objectMapper = CommonsUtil.getObjectMapper();
+        List<Cart> items = objectMapper.readValue(data, new TypeReference<List<Cart>>(){});
+        OrderServices.log.info(items.toString());
+        return items;
+    }
+
     /**
      * Utility function to add the order to the Kafka notification channel
      *
@@ -83,13 +133,17 @@ public class OrderServices {
      */
     private void notifyUser(List<String> modes, Orders order) throws Exception {
         ObjectMapper objectMapper = CommonsUtil.getObjectMapper();
+        String token = httpServletRequest.getHeader("Authorization");
+        System.out.println(token);
         CustomerDto customer = objectMapper.readValue
-                (Communication.sendGetRequest("http://" + Communication.getApplicationAddress() + "/customer/" + order.getCustomerID())
+                (Communication.sendGetRequest("http://" + Communication.getApplicationAddress() + "/customer/" + order.getCustomerID(),token)
                         , CustomerDto.class);
-        OrderPlaced orderPlaced = createOrderPlacedInstance(modes, order, customer);
-        NotificationProducer notificationProducer = CommonsUtil.getNotificationProducer();
-        notificationProducer.producerNotification(objectMapper.writeValueAsString(orderPlaced),
-                EcommAppApplication.environment.getRequiredProperty("notification.order.placed.topic"));
+        OrderDetails orderDetails = createOrderPlacedInstance(modes, order, customer);
+        Properties props = producer.getProducerConfigs();
+        KafkaProducer<String, String > kafkaProducer= producer.getKafkaProducer(props);
+        producer.producerRecord(objectMapper.writeValueAsString(orderDetails),
+                environment.getRequiredProperty(CommonsUtil.NOTIFICATION_ORDER_PLACED_TOPIC),kafkaProducer);
+        producer.closeProducer(kafkaProducer);
     }
 
     /**
@@ -101,14 +155,14 @@ public class OrderServices {
      * @return Instance of orderPlaced containing relevant details
      * @throws Exception
      */
-    private OrderPlaced createOrderPlacedInstance(List<String> modes, Orders order, CustomerDto customer) throws Exception {
-        OrderPlaced orderPlaced = new OrderPlaced();
+    private OrderDetails createOrderPlacedInstance(List<String> modes, Orders order, CustomerDto customer) throws Exception {
+        OrderDetails orderPlaced = new OrderDetails();
         orderPlaced.setMode(modes);
         orderPlaced.setCustomerDto(customer);
         orderPlaced.setOrderID(order.getOrderID());
         Product product = fetchProduct(order.getProductID());
         orderPlaced.setProductName(product.getName());
-        orderPlaced.setQuandity(order.getQuantity());
+        orderPlaced.setQuantity(order.getQuantity());
         orderPlaced.setTotalCost(order.getTotalCost());
         return orderPlaced;
     }
@@ -121,7 +175,8 @@ public class OrderServices {
      * @throws Exception
      */
     private Product fetchProduct(Long productId) throws Exception {
-        String data = Communication.sendGetRequest("http://" + Communication.getApplicationAddress() + "/product/" + productId);
+        String token = httpServletRequest.getHeader("Authorization");
+        String data = Communication.sendGetRequest("http://" + Communication.getApplicationAddress() + "/product/" + productId,token);
         ObjectMapper objectMapper = CommonsUtil.getObjectMapper();
         return objectMapper.readValue(data, Product.class);
     }
@@ -182,4 +237,19 @@ public class OrderServices {
         return "Order status changed from " + initial + " to " + updateOrder.getStatus();
     }
 
+    public Orders buyNow(ItemsDTO itemsDTO) throws Exception {
+        String token = httpServletRequest.getHeader("Authorization");
+        long customerId = jwtTokenProvider.getCustomerId();
+        ObjectMapper objectMapper = CommonsUtil.getObjectMapper();
+        CustomerDto customer = objectMapper.readValue
+                (Communication.sendGetRequest("http://" + Communication.getApplicationAddress() + "/customer/" + customerId ,token)
+                        , CustomerDto.class);
+        Orders order = new Orders();
+        order.setCustomerID(customer.getId());
+        order.setProductID(itemsDTO.getProductID());
+        order.setQuantity(itemsDTO.getQuantity());
+        order.setTotalCost(itemsDTO.getCost());
+        order.setOrderStatus(OrderStatus.Placed.toString());
+        return orderRepository.save(order);
+    }
 }

@@ -1,7 +1,7 @@
 package com.ecommerce.ecommApp.notifications.services;
 
 import com.ecommerce.ecommApp.commons.Util.CommonsUtil;
-import com.ecommerce.ecommApp.commons.pojo.notification.OrderPlaced;
+import com.ecommerce.ecommApp.commons.pojo.notification.OrderDetails;
 import com.ecommerce.ecommApp.notifications.NotificationUtil;
 import com.ecommerce.ecommApp.notifications.handlers.NotificationHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,7 +50,7 @@ public class OrderPlacedService extends Thread {
                 // TODO use the twilio sdk
                 final String json = record.value();
                 try {
-                    OrderPlaced orderPlaced = objectMapper.readValue(json, OrderPlaced.class);
+                    OrderDetails orderPlaced = objectMapper.readValue(json, OrderDetails.class);
                     log.trace("Record Found : {}", orderPlaced.toString());
                     String message = formatMessage(orderPlaced);
                     notificationHandler.sendNotification(getName(), orderPlaced.getMode(), orderPlaced, message);
@@ -64,7 +64,7 @@ public class OrderPlacedService extends Thread {
     /**
      * @return : This Method will format the text Message which we will be sending to the User via different modes.
      */
-    private String formatMessage(OrderPlaced orderPlaced) {
-        return String.format(NotificationUtil.MessageTemplate.ORDER_PLACED_MESSAGE, orderPlaced.getQuandity(), orderPlaced.getProductName(), orderPlaced.getOrderID());
+    private String formatMessage(OrderDetails orderPlaced) {
+        return String.format(NotificationUtil.MessageTemplate.ORDER_PLACED_MESSAGE, orderPlaced.getQuantity(), orderPlaced.getProductName(), orderPlaced.getOrderID());
     }
 }

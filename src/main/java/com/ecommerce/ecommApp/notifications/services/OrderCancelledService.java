@@ -1,7 +1,7 @@
 package com.ecommerce.ecommApp.notifications.services;
 
 import com.ecommerce.ecommApp.commons.Util.CommonsUtil;
-import com.ecommerce.ecommApp.commons.pojo.notification.OrderCancelled;
+import com.ecommerce.ecommApp.commons.pojo.notification.OrderDetails;
 import com.ecommerce.ecommApp.notifications.NotificationUtil;
 import com.ecommerce.ecommApp.notifications.handlers.NotificationHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,7 +15,7 @@ import java.util.Properties;
 
 /**
  * This Thread will work as a Consumer for Topic Order_Placed.
- * This will continously poll the data from the topic and process each record and send that
+ * This will continuously poll the data from the topic and process each record and send that
  * Processed Object to the notification handler.
  */
 public class OrderCancelledService extends Thread {
@@ -51,10 +51,10 @@ public class OrderCancelledService extends Thread {
                 // TODO use the twilio sdk
                 final String json = record.value();
                 try {
-                    OrderCancelled orderPlaced = objectMapper.readValue(json, OrderCancelled.class);
-                    log.trace("Record Found : " + orderPlaced.toString());
-                    String message = formatMessage(orderPlaced);
-                    notificationHandler.sendNotification(getName(), orderPlaced.getMode(), orderPlaced, message);
+                    OrderDetails orderCancelled = objectMapper.readValue(json, OrderDetails.class);
+                    log.trace("Record Found : " + orderCancelled.toString());
+                    String message = formatMessage(orderCancelled);
+                    notificationHandler.sendNotification(getName(), orderCancelled.getMode(), orderCancelled, message);
                 } catch (IOException ex) {
                     log.error("Error in Processing record : {}", record);
                 }
@@ -65,8 +65,8 @@ public class OrderCancelledService extends Thread {
     /**
      * @return : This Method will format the text Message which we will be sending to the User via different modes.
      */
-    private String formatMessage(OrderCancelled orderPlaced) {
-        return String.format(NotificationUtil.MessageTemplate.ORDER_CANCELLED_MESSAGE, orderPlaced.getQuandity(), orderPlaced.getProductName(), orderPlaced.getOrderID());
+    private String formatMessage(OrderDetails orderCancelled) {
+        return String.format(NotificationUtil.MessageTemplate.ORDER_CANCELLED_MESSAGE, orderCancelled.getQuantity(), orderCancelled.getProductName(), orderCancelled.getOrderID());
     }
 }
 

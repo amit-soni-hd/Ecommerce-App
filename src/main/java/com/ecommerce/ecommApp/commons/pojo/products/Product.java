@@ -27,8 +27,7 @@ public class Product {
   @Column(length = 1500)
   private String name;
 
-  @JsonProperty
-//  @NotNull
+  @JsonProperty("brand")
   @Column
   private String brand;
 

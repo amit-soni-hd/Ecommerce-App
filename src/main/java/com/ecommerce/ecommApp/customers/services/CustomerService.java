@@ -1,34 +1,49 @@
 package com.ecommerce.ecommApp.customers.services;
 
-import com.ecommerce.ecommApp.EcommAppApplication;
-import com.ecommerce.ecommApp.commons.NotificationProducer;
 import com.ecommerce.ecommApp.commons.Util.CommonsUtil;
+import com.ecommerce.ecommApp.commons.enums.NotificationType;
+import com.ecommerce.ecommApp.commons.kafka.Producer;
 import com.ecommerce.ecommApp.commons.pojo.customer.CustomerDto;
 import com.ecommerce.ecommApp.commons.pojo.notification.UserRegistered;
-import com.ecommerce.ecommApp.customers.dto.LoginDto;
 import com.ecommerce.ecommApp.customers.dto.RegistrationDto;
 import com.ecommerce.ecommApp.customers.exceptions.EmailExistsException;
 import com.ecommerce.ecommApp.customers.models.Customer;
+import com.ecommerce.ecommApp.customers.models.CustomerAddress;
+import com.ecommerce.ecommApp.customers.repository.CustomerAddressRepository;
 import com.ecommerce.ecommApp.customers.repository.CustomerRepository;
-import com.ecommerce.ecommApp.commons.enums.NotificationType;
 import com.ecommerce.ecommApp.customers.utils.CustomerUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javassist.NotFoundException;
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.core.env.Environment;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.NoSuchElementException;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class CustomerService {
 
-    @Autowired
     private CustomerRepository customerRepository;
-    NotificationProducer notificationProducer;
-    CustomerUtil customerUtil = new CustomerUtil();
+    private Producer producer;
+    private CustomerUtil customerUtil;
+    private PasswordEncoder passwordEncoder;
+    private CustomerAddressRepository customerAddressRepository;
+    private  Environment environment;
+
+    @Autowired
+    private CustomerService(CustomerRepository customerRepository, PasswordEncoder passwordEncoder,
+                            Producer producer, Environment environment, CustomerAddressRepository addressRepository) {
+        this.customerRepository = customerRepository;
+        this.producer = producer;
+        this.customerUtil = new CustomerUtil();
+        this.passwordEncoder = passwordEncoder;
+        this.customerAddressRepository = addressRepository;
+        this.environment=environment;
+    }
+
 
     public CustomerDto register(RegistrationDto regDetails) throws EmailExistsException {
 
@@ -40,25 +55,13 @@ public class CustomerService {
         customer.setName(regDetails.getName());
         customer.setEmail(regDetails.getEmail());
         customer.setNumber(regDetails.getNumber());
-        customer.setPassword(EcommAppApplication.context.getBean(BCryptPasswordEncoder.class).
-                encode(regDetails.getPassword()));
+        customer.setPassword(passwordEncoder.encode(regDetails.getPassword()));
         customer.setWhatsapp(regDetails.getWhatsapp());
         customer.setGender(regDetails.getGender());
         customerRepository.save(customer);
         CustomerDto customerDto = customerUtil.convertToPojo(customer);
         sendRegistrationNotification(customerDto);
         return customerDto;
-    }
-
-    public CustomerDto loginCustomer(LoginDto loginDetails) throws NotFoundException {
-
-        Optional<Customer> loggedInCustomer = customerRepository.findByEmail(loginDetails.getEmail());
-        if (loggedInCustomer.isPresent() && EcommAppApplication.context.getBean(BCryptPasswordEncoder.class)
-                .matches(loginDetails.getPassword(), loggedInCustomer.get().getPassword())) {
-            return customerUtil.convertToPojo(loggedInCustomer.get());
-        } else {
-            throw new NotFoundException(CommonsUtil.CUSTOMER_NOT_FOUND);
-        }
     }
 
     public CustomerDto getCustomerDetails(Long customerId) throws NotFoundException {
@@ -93,6 +96,27 @@ public class CustomerService {
         }
     }
 
+    public CustomerAddress addCustomerAddress(CustomerAddress addressDetails, Long customerId){
+
+        if(customerRepository.findById(customerId).isPresent()) {
+
+            Customer customer = customerRepository.findById(customerId).get();
+            addressDetails.setCustomer(customer);
+            customerAddressRepository.save(addressDetails);
+            return addressDetails;
+        }
+        else
+            throw new NoSuchElementException(CommonsUtil.CUSTOMER_NOT_FOUND);
+    }
+
+    public List<CustomerAddress> getCustomerAddresses(Long customerId){
+
+        if(customerRepository.findById(customerId).isPresent()){
+            Customer customer = customerRepository.findById(customerId).get();
+            return customerAddressRepository.findByCustomer(customer);
+        } else
+            throw new NoSuchElementException(CommonsUtil.CUSTOMER_NOT_FOUND);
+    }
     private void sendRegistrationNotification(CustomerDto customerDto) {
         ObjectMapper objectMapper = new ObjectMapper();
         UserRegistered userRegistered = new UserRegistered();
@@ -100,10 +124,12 @@ public class CustomerService {
         userRegistered.getMode().add(NotificationType.Text_SMS.toString());
         userRegistered.getMode().add(NotificationType.EMAIL.toString());
         userRegistered.setCustomerDto(customerDto);
-        notificationProducer = CommonsUtil.getNotificationProducer();
         try {
-            notificationProducer.producerNotification(objectMapper.writeValueAsString(userRegistered),
-                    EcommAppApplication.environment.getRequiredProperty(CommonsUtil.NOTIFICATION_REGISTERED_TOPIC));
+            Properties props = producer.getProducerConfigs();
+            KafkaProducer<String, String > kafkaProducer= producer.getKafkaProducer(props);
+            producer.producerRecord(objectMapper.writeValueAsString(userRegistered),
+                    environment.getRequiredProperty(CommonsUtil.NOTIFICATION_REGISTERED_TOPIC),kafkaProducer);
+            producer.closeProducer(kafkaProducer);
         } catch (IOException ignored) {
         }
     }

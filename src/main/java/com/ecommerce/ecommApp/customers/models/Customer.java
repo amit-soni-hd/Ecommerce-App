@@ -1,15 +1,9 @@
 package com.ecommerce.ecommApp.customers.models;
 
 import lombok.Data;
-import org.springframework.stereotype.Component;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import javax.persistence.*;
+import java.util.Set;
 
-@Component
 @Entity
 @Table(name = "customer")
 @Data
@@ -18,7 +12,7 @@ public class Customer
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(updatable = false, nullable = false,unique = true)
-    private Long id;
+    private Long customerId;
 
     @Column(name = "name")
     private String name;
@@ -37,5 +31,8 @@ public class Customer
 
     @Column(name="gender")
     private String gender;
+
+    @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY, cascade = CascadeType.ALL,targetEntity = CustomerAddress.class)
+    private Set<CustomerAddress> customerAddresses;
 
 }

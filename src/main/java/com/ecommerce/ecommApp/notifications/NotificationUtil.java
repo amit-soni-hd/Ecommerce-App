@@ -20,11 +20,12 @@ import java.util.Properties;
 public class NotificationUtil {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationUtil.class);
-    public static Environment environment = EcommAppApplication.environment;
+    public static Environment environment;
     private static NotificationHandler handler;
 
     static {
         handler = new NotificationHandler();
+        environment = EcommAppApplication.environment;
     }
 
     /**

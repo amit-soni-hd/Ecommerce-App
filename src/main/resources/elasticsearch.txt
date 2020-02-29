@@ -13,7 +13,7 @@ docker run --link fe15aada3054:elasticsearch -p 5601:5601 kibana:7.5.2
 
 Kibana Dev Tools :  http://localhost:5601/app/kibana#/dev_tools/console?_g=()
 --------------------------------------------------
-
+docker run -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:7.5.2
 Insert data in Elastic Search
 
 PUT twitter/_doc/{Product_id}
@@ -605,4 +605,10 @@ POST products/_search
     }
 }
 
+---------------------------------------------------------------------
+Sample queries sent to Elasticsearch
+---------------------------------------------------------------------
 
+String json = "{\"search_text\":\"jeans\",\"price\":{\"lte\":500,\"gte\":13},\"category\":\"bottoms\"}";
+
+--------------------------------------------------------------------------------------------------------

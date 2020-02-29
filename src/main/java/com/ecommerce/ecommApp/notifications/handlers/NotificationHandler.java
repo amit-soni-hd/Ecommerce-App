@@ -3,8 +3,7 @@ package com.ecommerce.ecommApp.notifications.handlers;
 import com.ecommerce.ecommApp.EcommAppApplication;
 import com.ecommerce.ecommApp.commons.Util.CommonsUtil;
 import com.ecommerce.ecommApp.commons.enums.NotificationType;
-import com.ecommerce.ecommApp.commons.pojo.notification.OrderCancelled;
-import com.ecommerce.ecommApp.commons.pojo.notification.OrderPlaced;
+import com.ecommerce.ecommApp.commons.pojo.notification.OrderDetails;
 import com.ecommerce.ecommApp.commons.pojo.notification.UserRegistered;
 import com.sendgrid.Method;
 import com.sendgrid.Request;
@@ -42,7 +41,7 @@ public class NotificationHandler implements Handler {
         if (modes.contains(NotificationType.Text_SMS.toString()))
             createSmsNotification(notifyingService, object, message);
 
-        if (modes.contains(NotificationType.EMAIL.toString()))
+        if (modes.contains(NotificationType.EMAIL.toString()) && !notifyingService.equals(CommonsUtil.NOTIFICATION_ORDER_PLACED_SERVICE) )
             createEmailNotificaton(notifyingService, object, message);
 
         if (modes.contains(NotificationType.Text_WHATSAPP.toString()))
@@ -59,13 +58,13 @@ public class NotificationHandler implements Handler {
                 sendSmsNotification(((UserRegistered)(object)).getCustomerDto().getNumber(),message);
                 break;
             case CommonsUtil.NOTIFICATION_ORDER_CANCELLED_SERVICE:
-                sendSmsNotification(((OrderCancelled)(object)).getCustomerDto().getNumber(),message);
+                sendSmsNotification(((OrderDetails)(object)).getCustomerDto().getNumber(),message);
                 break;
             case CommonsUtil.NOTIFICATION_ORDER_STATUS_SERVICE:
                 sendSmsNotification(((UserRegistered)(object)).getCustomerDto().getNumber(),message);
                 break;
             case CommonsUtil.NOTIFICATION_ORDER_PLACED_SERVICE:
-                sendSmsNotification(((OrderPlaced)(object)).getCustomerDto().getNumber(),message);
+                sendSmsNotification(((OrderDetails)(object)).getCustomerDto().getNumber(),message);
                 break;
         }
     }
@@ -79,13 +78,13 @@ public class NotificationHandler implements Handler {
                 sendEmailNotificaton(((UserRegistered) (object)).getCustomerDto().getEmail(), notifyingService, message);
                 break;
             case CommonsUtil.NOTIFICATION_ORDER_CANCELLED_SERVICE:
-                sendEmailNotificaton(((OrderCancelled) (object)).getCustomerDto().getEmail(), notifyingService, message);
+                sendEmailNotificaton(((OrderDetails) (object)).getCustomerDto().getEmail(), notifyingService, message);
                 break;
             case CommonsUtil.NOTIFICATION_ORDER_STATUS_SERVICE:
                 sendEmailNotificaton(((UserRegistered) (object)).getCustomerDto().getEmail(), notifyingService, message);
                 break;
             case CommonsUtil.NOTIFICATION_ORDER_PLACED_SERVICE:
-                sendEmailNotificaton(((OrderPlaced) (object)).getCustomerDto().getEmail(), notifyingService, message);
+                sendEmailNotificaton(((OrderDetails) (object)).getCustomerDto().getEmail(), notifyingService, message);
                 break;
         }
     }
@@ -117,11 +116,12 @@ public class NotificationHandler implements Handler {
             log.error("Twilio API Exception : Error in sending message to {}", number);
         }
     }
+    
 
     /**
      * This method send email notification to the particular email using the SendGrid SDK.
      * @param email : Email to which we need to send the Notification
-     * @param subject : Subject of teh Email is basically the Name of the Notification Service
+     * @param subject : Subject of the Email is basically the Name of the Notification Service
      * @param message : Message to be send.
      */
     public void sendEmailNotificaton(String email, String subject, String message) {
